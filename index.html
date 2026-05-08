@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>旧宅 - 扣哒宇宙AI课程学生作品</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background-color:#000;}
+
+/* --- 初始海报界面样式 --- */
+#bgPoster{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:2;}
+#overlay img{width:50%; max-width:600px; margin-bottom:20px; opacity:0; transition:opacity 2s;}
+
+/* 【可调数值】标题下方文字大小 */
+#subtitle{font-size:1.1em; opacity:0; transition:opacity 2s; text-align:center;color:white;text-shadow:2px 2px 5px black;}
+
+/* 【可调数值】“开始游戏”按钮大小和内边距 */
+#startBtn{margin-top:30px; font-size:1.4em; color:white; cursor:pointer; opacity:0; transition:opacity 2s; padding:10px 25px; border:2px solid white; border-radius:10px; text-align:center; text-shadow:2px 2px 5px black;}
+
+/* 【可调数值】视频中出现的独白文字大小 */
+#videoText{position:absolute;top:40%;width:100%;text-align:center;font-size:1.5em;z-index:10;display:none;color:white;text-shadow:2px 2px 5px black;}
+
+/* 【可调数值】过渡文字“去宅邸躲雨”大小 */
+#startSceneText{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8em; 
+  color: white; 
+  cursor: pointer; 
+  opacity: 0; 
+  display: none;
+  padding: 12px 25px; 
+  border: 2px solid white; 
+  border-radius: 10px; 
+  text-align: center; 
+  text-shadow: 2px 2px 5px black;
+  z-index: 20;
+}
+
+/* --- 游戏内 UI 指引 --- */
+#instructions {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+  pointer-events: none; /* 不挡鼠标 */
+  z-index: 100;
+  display: none; /* 初始隐藏，进入3D场景后显示 */
+}
+#instructions b { color: #ffcc00; }
+
+#gameCanvas{display:block; position:absolute; top:0; left:0; z-index:0;}
+#crosshair {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 6px; height: 6px; background: rgba(255,255,255,0.6); border-radius: 50%; z-index: 10; display: none;
+}
+</style>
+</head>
+<body>
+
+<img id="bgPoster" src="bg_title.png" alt="海报">
+<div id="overlay">
+  <img id="titleImg" src="title_main.png" alt="标题">
+  <p id="subtitle">扣哒宇宙AI课程的学生作品</p>
+  <div id="startBtn">开始游戏</div>
+</div>
+
+<div id="videoText">这...好像是小时候来过的地方，那个叫小禾的女孩...</div>
+
+<div id="startSceneText">去宅邸躲雨</div>
+
+<div id="instructions">
+  <b>操作指南</b><br>
+  [ W A S D ] - 移动<br>
+  [ 空格 ] - 跳跃<br>
+  [ 鼠标 ] - 环视四周<br>
+  [ ESC ] - 释放鼠标/退出界面
+</div>
+
+<div id="crosshair"></div>
+<canvas id="gameCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
+<script>
+// --- UI 元素获取 ---
+const overlay=document.getElementById('overlay');
+const titleImg=document.getElementById('titleImg');
+const subtitle=document.getElementById('subtitle');
+const startBtn=document.getElementById('startBtn');
+const bgPoster=document.getElementById('bgPoster');
+const videoText=document.getElementById('videoText');
+const startSceneText=document.getElementById('startSceneText');
+const crosshair=document.getElementById('crosshair');
+const instructions=document.getElementById('instructions');
+
+// 【可调数值】标题和副标题浮现的等待时间（毫秒）
+setTimeout(()=>{ titleImg.style.opacity=1; subtitle.style.opacity=1; }, 2000);
+setTimeout(()=>{ startBtn.style.opacity=1; }, 4000);
+
+startBtn.addEventListener('click',()=>{
+  overlay.style.display='none';
+  bgPoster.style.display='none'; 
+  playTransitionVideo();
+});
+
+function playTransitionVideo(){
+  const video=document.createElement('video');
+  video.src='kaichang2.mp4';
+  video.autoplay=true; video.controls=false;
+  video.style.position='fixed'; video.style.top='0'; video.style.left='0';
+  video.style.width='100%'; video.style.height='100%';
+  video.style.objectFit='cover'; video.style.zIndex='5';
+  video.muted=false; 
+  video.volume=0.5; // 【可调数值】视频音量 (0.0 到 1.0)
+  document.body.appendChild(video);
+  video.play().catch(e=>console.log("视频播放受限:", e));
+
+  // 【可调数值】视频播放多久后显示台词
+  setTimeout(()=>{ videoText.style.display='block'; }, 12000);
+
+  video.onended=()=>{
+    videoText.style.display='none';
+    startSceneText.style.opacity=0;
+    startSceneText.style.display='block';
+    fadeInTextAndScene();
+    document.body.removeChild(video);
+  }
+}
+
+function fadeInTextAndScene(){
+  let opacity=0;
+  const interval=setInterval(()=>{
+    opacity+=0.02;
+    startSceneText.style.opacity=opacity;
+    if(opacity>=1) clearInterval(interval);
+  }, 50);
+}
+
+// ---------------- 3D 游戏核心变量 ----------------
+let camera, scene, renderer, controls;
+let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false;
+let canJump=false;
+const velocity=new THREE.Vector3();
+const direction=new THREE.Vector3();
+let objects=[]; // 碰撞物体存储数组
+
+startSceneText.addEventListener('click',(e)=>{
+  e.stopPropagation(); 
+  startSceneText.style.display='none';
+  crosshair.style.display='block'; 
+  instructions.style.display='block'; // 显示左上角指引
+  initThreeJS();
+});
+
+function initThreeJS(){
+  const canvas=document.getElementById('gameCanvas');
+  scene=new THREE.Scene(); 
+  
+  // 【可调数值】场景背景颜色
+  scene.background=new THREE.Color(0x0a0a0a); 
+  
+  // 【可调数值】场景雾气 (颜色, 开始距离, 结束距离)
+  scene.fog = new THREE.Fog(0x0a0a0a, 2, 25); 
+
+  camera=new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  
+  // 【可调数值】玩家出生视角高度 (1.6米左右是人类视觉高度)
+  camera.position.set(0, 1.6, 5); 
+  
+  renderer=new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // --- 灯光系统 ---
+  // 【可调数值】环境光亮度
+  scene.add(new THREE.AmbientLight(0xffffff, 0.2)); 
+  
+  // 【可调数值】手电筒 (颜色, 强度, 照射距离)
+  const flashLight = new THREE.PointLight(0xffeedd, 1.8, 20);
+  camera.add(flashLight);
+  flashLight.position.set(0, -0.2, -0.5); 
+  scene.add(camera);
+
+  // --- 场景构建 ---
+  // 1. 地板网格
+  const floorGeo = new THREE.PlaneGeometry(50, 50);
+  const floorMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.9});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+
+  // 【可调数值】地面网格大小和颜色
+  const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x222222);
+  gridHelper.position.y = 0.01; 
+  scene.add(gridHelper);
+
+  // 辅助函数：创建简易墙壁
+  const wallMat = new THREE.MeshStandardMaterial({color: 0x333333});
+  function createWall(w, h, d, x, z) {
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, wallMat);
+    mesh.position.set(x, h/2, z);
+    scene.add(mesh);
+    objects.push(mesh);
+  }
+  // 创建四周的虚幻边界墙
+  createWall(50, 6, 1, 0, -25); // 前
+  createWall(50, 6, 1, 0, 25);  // 后
+  createWall(1, 6, 50, -25, 0); // 左
+  createWall(1, 6, 50, 25, 0);  // 右
+
+  // --- 加载外部 FBX 模型 ---
+  const fbxLoader = new THREE.FBXLoader();
+
+  // 加载沙发
+  fbxLoader.load('shafa1/Meshy_AI_Worn_Leather_Chesterf_0508093447_texture.fbx', (object) => {
+    // 【可调数值】沙发缩放倍数
+    object.scale.set(0.018, 0.018, 0.018); 
+    // 【可调数值】沙发位置 (左/右, 上/下, 前/后)
+    object.position.set(-3, 0.4, -2); 
+    scene.add(object);
+    objects.push(object); // 加入碰撞检测
+  });
+
+  // 加载柜子
+  fbxLoader.load('guizi/Meshy_AI_Obsidian_Marble_Media_0508094823_texture.fbx', (object) => {
+    // 【可调数值】柜子缩放倍数
+    object.scale.set(0.02, 0.02, 0.02); 
+    // 【可调数值】柜子位置 (左/右, 上/下, 前/后)
+    object.position.set(3, 0.6, -3); 
+    scene.add(object);
+    objects.push(object); // 加入碰撞检测
+  });
+
+  // --- 第一视角锁定控制器 ---
+  controls=new THREE.PointerLockControls(camera,document.body);
+  document.body.addEventListener('click',()=>{ controls.lock(); });
+  
+  // 锁定/解锁时指引面板的显隐逻辑
+  controls.addEventListener('lock', () => { instructions.style.display = 'none'; });
+  controls.addEventListener('unlock', () => { instructions.style.display = 'block'; });
+
+  document.addEventListener('keydown',onKeyDown);
+  document.addEventListener('keyup',onKeyUp);
+  window.addEventListener('resize',onWindowResize);
+
+  controls.lock(); 
+  animate();
+}
+
+// --- 物理与碰撞逻辑 ---
+function checkCollision(newPos){
+  // 创建玩家包围盒
+  const playerBox=new THREE.Box3().setFromCenterAndSize(newPos, new THREE.Vector3(0.6, 1.6, 0.6));
+  for(let obj of objects){
+    const objBox = new THREE.Box3().setFromObject(obj);
+    if(playerBox.intersectsBox(objBox)) return true;
+  }
+  return false;
+}
+
+function onWindowResize(){
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+}
+
+function onKeyDown(event){
+  switch(event.code){
+    case 'KeyW': moveForward=true; break;
+    case 'KeyS': moveBackward=true; break;
+    case 'KeyA': moveLeft=true; break;
+    case 'KeyD': moveRight=true; break;
+    // 【可调数值】跳跃力度
+    case 'Space': if(canJump){ velocity.y+=5.5; canJump=false; } break; 
+  }
+}
+function onKeyUp(event){
+  switch(event.code){
+    case 'KeyW': moveForward=false; break;
+    case 'KeyS': moveBackward=false; break;
+    case 'KeyA': moveLeft=false; break;
+    case 'KeyD': moveRight=false; break;
+  }
+}
+
+// --- 每一帧的渲染和物理模拟 ---
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const delta=Math.min(clock.getDelta(), 0.1); 
+  
+  // 【可调数值】基础移动速度
+  const speed = 35.0; 
+
+  if(controls.isLocked === true){
+    // 惯性摩擦力
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
+    
+    // 【可调数值】重力系数
+    velocity.y -= 9.8 * 4.5 * delta;
+
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize(); 
+
+    if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+
+    let nextPos = controls.getObject().position.clone();
+    nextPos.x += (velocity.x * delta);
+    nextPos.z += (velocity.z * delta);
+
+    if(!checkCollision(nextPos)){ 
+      controls.moveRight(-velocity.x * delta); 
+      controls.moveForward(-velocity.z * delta); 
+    } else {
+      velocity.x = 0;
+      velocity.z = 0;
+    }
+
+    controls.getObject().position.y += velocity.y * delta;
+    // 地面限制
+    if(controls.getObject().position.y < 1.6){ 
+      velocity.y = 0; 
+      controls.getObject().position.y = 1.6; 
+      canJump = true;
+    }
+  }
+  renderer.render(scene,camera);
+}
+</script>
+</body>
+</html>
